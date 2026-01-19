@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UCloud AI 平台 - 体验中心</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Global Navbar -->
+    <nav class="global-navbar">
+        <div class="nav-left">
+            <img src="assets/global-logo.svg" alt="RunC.AI" class="nav-logo">
+            <div class="nav-links">
+                <a href="#" class="nav-link">模型服务平台</a>
+                <a href="#" class="nav-link">沙箱应用</a>
+                <a href="#" class="nav-link active">体验中心</a>
+                <a href="#" class="nav-link">文档</a>
+                <a href="#" class="nav-link">API参考</a>
+            </div>
+        </div>
+        <div class="nav-right">
+            <div class="user-profile">
+                <span class="user-name">Default</span>
+                <span class="user-role">darkbeginner</span>
+                <img src="assets/user-avatar.png" alt="Avatar" class="user-avatar">
+            </div>
+        </div>
+    </nav>
+
+    <div class="app-container">
+        <!-- Hidden File Input for Uploads -->
+        <input type="file" id="hidden-file-input" style="display: none;">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-menu">
+                <div class="menu-item active" data-engine="text">
+                    <img src="assets/sidebar-item-1.svg" class="menu-icon">
+                    <span>文本模型</span>
+                </div>
+                <div class="menu-item" data-engine="visual">
+                    <img src="assets/sidebar-item-3.svg" class="menu-icon">
+                    <span>视觉模型</span>
+                </div>
+                <!-- 全模态模型 & 模型训练 removed as per request -->
+
+            </div>
+        </aside>
+
+        <!-- Main Content Wrapper -->
+        <div class="content-wrapper" style="display:flex; flex:1; position:relative; overflow:hidden;">
+            
+            <main class="main-content">
+                <!-- Alerts -->
+                <div class="alerts-container">
+                    <div class="alert alert-info">
+                        <img src="assets/info-icon.svg" class="alert-icon">
+                        <span>模型体验将会消耗免费额度或产生按量付费账单，费用以实际发生为主</span>
+                    </div>
+                </div>
+
+                <!-- Sub Category Radio Group (Centered) -->
+                <div class="sub-category-nav" id="sub-category-nav" style="display:none;">
+                    <div class="radio-group">
+                        <label class="radio-item active">
+                            <input type="radio" name="sub-cat" value="understanding" checked>
+                            <span>图片理解</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" name="sub-cat" value="image-gen">
+                            <span>图片生成</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" name="sub-cat" value="video-gen">
+                            <span>视频生成</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Page Header -->
+                <header class="page-header">
+                    <!-- Model Selector (Dropdown with 3 Levels) -->
+                    <div class="model-selector-container">
+                        <div class="model-dropdown" id="model-trigger">
+                            <span class="current-model-name">Modelverse-Max-2.0</span>
+                            <img src="assets/dropdown-arrow.svg" class="dropdown-arrow">
+                        </div>
+                        <!-- 3-Level Dropdown Menu (Hidden by default) -->
+                        <div class="model-menu-popover" id="model-menu">
+                            <div class="menu-level level-brand">
+                                <div class="menu-option active" data-val="modelverse">Modelverse</div>
+                                <div class="menu-option" data-val="qwen">通义千问</div>
+                                <div class="menu-option" data-val="llama">Llama</div>
+                            </div>
+                            <div class="menu-level level-version">
+                                <div class="menu-option active" data-val="max">Max</div>
+                                <div class="menu-option" data-val="pro">Pro</div>
+                                <div class="menu-option" data-val="flash">Flash</div>
+                            </div>
+                            <div class="menu-level level-endpoint">
+                                <div class="menu-option active" data-val="latest">
+                                    <span>Latest</span>
+                                    <span class="timestamp">2023-10-24</span>
+                                </div>
+                                <div class="menu-option" data-val="v1">
+                                    <span>V1.0</span>
+                                    <span class="timestamp">2023-09-01</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="header-actions">
+                     <button id="new-chat-btn" class="icon-btn" title="新对话 (清除上下文)">
+                        <img src="assets/clean-icon.svg" style="width:16px; height:16px;">
+                     </button>
+                     <button id="compare-toggle" class="icon-btn" title="模型对比">
+                        <span class="vs-btn">VS 对比</span>
+                     </button>
+                     <button class="header-action-btn" title="参数配置">
+                        <img src="assets/setting-icon.svg" alt="Config">
+                     </button>
+                </div>
+                </header>
+
+                <!-- Workspace -->
+                <div class="workspace" id="workspace">
+                    <!-- Left Pane (Default) -->
+                    <div class="workspace-center" id="workspace-left">
+
+                        <div class="welcome-section">
+                            <h2 class="welcome-title">欢迎使用文本大模型</h2>
+                            <div class="start-experience">
+                                <span>开始体验</span>
+                            </div>
+                        </div>
+
+                        <!-- Visual Tools Container (Dynamic) -->
+                        <div id="visual-tools-container"></div>
+
+                        <!-- Input Box -->
+                        <div class="input-box-container">
+                             <div class="input-upper-area">
+                                 <!-- Visual Upload Zone (For Understanding Mode) - MOVED HERE -->
+                                 <div id="visual-upload-zone" class="upload-zone" style="display:none;">
+                                     <!-- Default State (Square) -->
+                                     <div class="upload-content default-state">
+                                         <img src="assets/upload-icon.svg" style="width:24px; opacity:0.5;">
+                                         <span class="upload-hint">上传</span>
+                                     </div>
+                                     <!-- Hover/Active State (Expanded) -->
+                                    <div class="upload-hover-menu">
+                                        <button class="upload-option-btn" data-type="image">
+                                            <img src="assets/icon-image.svg" class="option-icon">
+                                            <span>上传图片</span>
+                                        </button>
+                                        <button class="upload-option-btn" data-type="video">
+                                            <img src="assets/icon-video.svg" class="option-icon">
+                                            <span>上传视频</span>
+                                        </button>
+                                    </div>
+                                 </div>
+    
+                                <div class="input-content" contenteditable="true">
+                                    <span class="placeholder-text" contenteditable="false">在这里输入内容，探索无限可能。</span>
+                                </div>
+                             </div>
+                            
+                            <!-- Input Footer -->
+                            <div class="input-footer">
+                                <div class="input-tools-left">
+                                    <!-- Advanced Switches (Text Model Only) -->
+                                    <div class="tools-group" id="tools-text">
+                                        <label class="switch-control">
+                                            <input type="checkbox" class="switch-input">
+                                            <span class="switch-slider"></span>
+                                            <span class="switch-label-text">深度思考</span>
+                                        </label>
+                                        <label class="switch-control">
+                                            <input type="checkbox" class="switch-input">
+                                            <span class="switch-slider"></span>
+                                            <span class="switch-label-text">联网</span>
+                                        </label>
+                                    </div>
+
+                                    <!-- Visual Understanding Tools (New) -->
+                                    <div class="tools-group" id="tools-visual-understanding" style="display:none;">
+                                        <label class="switch-control">
+                                            <input type="checkbox" class="switch-input">
+                                            <span class="switch-slider"></span>
+                                            <span class="switch-label-text">深度思考</span>
+                                        </label>
+                                        <label class="switch-control">
+                                            <input type="checkbox" class="switch-input">
+                                            <span class="switch-slider"></span>
+                                            <span class="switch-label-text">联网</span>
+                                        </label>
+                                    </div>
+
+                                    <!-- Image Generation Tools -->
+                                    <div class="tools-group" id="tools-image" style="display:none; gap: 8px;">
+                                        <div class="mini-select-wrapper">
+                                            <select class="mini-select" data-type="ratio">
+                                                <option value="1:1" selected>1:1</option>
+                                                <option value="16:9">16:9</option>
+                                                <option value="9:16">9:16</option>
+                                                <option value="4:3">4:3</option>
+                                            </select>
+                                        </div>
+                                        <div class="mini-select-wrapper">
+                                            <select class="mini-select" data-type="count">
+                                                <option value="1" selected>1张</option>
+                                                <option value="2">2张</option>
+                                                <option value="4">4张</option>
+                                            </select>
+                                        </div>
+                                        <div class="tool-divider"></div>
+                                        <button class="tool-btn" id="upload-ref-img">
+                                            <span style="font-size: 16px; line-height: 1;">+</span>
+                                            <span>参考图</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Video Generation Tools -->
+                                    <div class="tools-group" id="tools-video" style="display:none; gap: 8px;">
+                                        <label class="switch-control">
+                                            <input type="checkbox" class="switch-input" id="smart-rewrite-switch">
+                                            <span class="switch-slider"></span>
+                                            <span class="switch-label-text">Prompt智能改写</span>
+                                        </label>
+                                        <div class="tool-divider"></div>
+                                        <div class="mini-select-wrapper">
+                                            <select class="mini-select" data-type="duration">
+                                                <option value="4s" selected>4s</option>
+                                                <option value="8s">8s</option>
+                                            </select>
+                                        </div>
+                                        <div class="mini-select-wrapper">
+                                            <select class="mini-select" data-type="resolution">
+                                                <option value="720p" selected>720p</option>
+                                                <option value="1080p">1080p</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="input-actions-right">
+                                    <!-- API Key Select -->
+                                    <div class="api-key-selector">
+                                        <select id="api-key-select">
+                                            <option value="" disabled selected>选择 API Key</option>
+                                            <option value="key_1">My-Project-Key (sk-...8s9)</option>
+                                            <option value="new">+ 申请新 Key</option>
+                                        </select>
+                                    </div>
+
+                                    <button class="input-tools-right" id="send-btn" aria-label="Send">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p class="disclaimer">所有内容均由人工智能模型生成，准确性和完整性无法保证，不代表我们的态度或观点</p>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Right Drawer (Config) -->
+            <aside id="config-drawer" class="right-drawer">
+                <div class="drawer-header">
+                    <h3>模型配置</h3>
+                    <span class="close-drawer">×</span>
+                </div>
+                <div class="drawer-content">
+                    <div class="config-item">
+                        <label>
+                            System Prompt
+                            <img src="assets/magic-icon.svg" title="Prompt 优化" style="width:14px; cursor:pointer; float:right;">
+                        </label>
+                        <textarea placeholder="输入系统预设指令..."></textarea>
+                    </div>
+                    <div class="config-item">
+                        <label>Temperature (随机性)</label>
+                        <input type="range" min="0" max="1" step="0.1" value="0.7">
+                        <div class="range-val">0.7</div>
+                    </div>
+                    <div class="config-item">
+                        <label>Max Tokens</label>
+                        <input type="number" value="2048">
+                    </div>
+                </div>
+            </aside>
+
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
