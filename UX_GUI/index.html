@@ -112,8 +112,8 @@
                     </div>
 
                     <div class="header-actions">
-                     <button id="new-chat-btn" class="icon-btn" title="新对话 (清除上下文)">
-                        <img src="assets/clean-icon.svg" style="width:16px; height:16px;">
+                     <button id="new-chat-btn" class="icon-btn" title="清空对话" style="display:none;">
+                        <img src="assets/trash-icon.svg" style="width:16px; height:16px;">
                      </button>
                      <button id="compare-toggle" class="icon-btn" title="模型对比">
                         <span class="vs-btn">VS 对比</span>
@@ -129,12 +129,13 @@
                     <!-- Left Pane (Default) -->
                     <div class="workspace-center" id="workspace-left">
 
-                        <div class="welcome-section">
+                        <div class="welcome-section" id="welcome-section">
                             <h2 class="welcome-title">欢迎使用文本大模型</h2>
-                            <div class="start-experience">
-                                <span>开始体验</span>
-                            </div>
+
                         </div>
+
+                        <!-- Chat Container (Hidden by default) -->
+                        <div id="chat-container" class="chat-container" style="display:none;"></div>
 
                         <!-- Visual Tools Container (Dynamic) -->
                         <div id="visual-tools-container"></div>
@@ -161,6 +162,24 @@
                                         </button>
                                     </div>
                                  </div>
+
+                                 <!-- Video Generation Upload Group (Start/End Frames) -->
+                                 <div id="video-upload-group" class="video-upload-group" style="display:none;">
+                                     <!-- Start Frame -->
+                                     <div class="upload-zone single-mode video-frame-zone" data-frame-type="start">
+                                         <div class="upload-content default-state">
+                                             <img src="assets/upload-icon.svg" style="width:24px; opacity:0.5;">
+                                             <span class="upload-hint">首帧</span>
+                                         </div>
+                                     </div>
+                                     <!-- End Frame -->
+                                     <div class="upload-zone single-mode video-frame-zone" data-frame-type="end">
+                                         <div class="upload-content default-state">
+                                             <img src="assets/upload-icon.svg" style="width:24px; opacity:0.5;">
+                                             <span class="upload-hint">尾帧</span>
+                                         </div>
+                                     </div>
+                                 </div>
     
                                 <div class="input-content" contenteditable="true">
                                     <span class="placeholder-text" contenteditable="false">在这里输入内容，探索无限可能。</span>
@@ -170,6 +189,7 @@
                             <!-- Input Footer -->
                             <div class="input-footer">
                                 <div class="input-tools-left">
+                                    
                                     <!-- Advanced Switches (Text Model Only) -->
                                     <div class="tools-group" id="tools-text">
                                         <label class="switch-control">
@@ -265,7 +285,7 @@
                             </div>
                         </div>
 
-                        <p class="disclaimer">所有内容均由人工智能模型生成，准确性和完整性无法保证，不代表我们的态度或观点</p>
+                        <p class="disclaimer">AI内容仅做参考，不做平台观点</p>
                     </div>
                 </div>
             </main>

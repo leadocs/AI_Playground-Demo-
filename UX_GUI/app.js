@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
         currentVisualTab: 'understanding', // 'understanding' | 'image-gen' | 'video-gen'
         apiKey: '', // string
         hasVisualInput: false, // Track if image/video is uploaded for visual understanding
+        uploadedFiles: [], // Store uploaded file objects (Array)
+        uploadedFileUrls: [], // Store preview URLs (Array)
         isDrawerOpen: false,
         isCompareMode: false,
         modelSelection: {
@@ -33,6 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
         welcomeTitle: document.querySelector('.welcome-title'),
         apiKeySelect: document.querySelector('#api-key-select'),
         sendBtn: document.querySelector('#send-btn'),
+        // Video Generation
+        videoUploadGroup: document.getElementById('video-upload-group'),
+        videoFrameZones: document.querySelectorAll('.video-frame-zone'),
+        
         inputBox: document.querySelector('.input-content'),
         drawer: document.querySelector('#config-drawer'),
         drawerToggle: document.querySelector('.header-action-btn'),
@@ -51,6 +57,11 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadOptions: document.querySelectorAll('.upload-option-btn'),
         visualUploadZone: document.querySelector('#visual-upload-zone'),
         hiddenFileInput: document.querySelector('#hidden-file-input'), // Added hidden file input
+        textModelUploadBtn: document.querySelector('#text-model-upload-btn'), // New upload btn for text model
+        chatContainer: document.querySelector('#chat-container'), // New Chat Container
+        welcomeSection: document.querySelector('#welcome-section'), // Welcome Section
+        newChatBtn: document.querySelector('#new-chat-btn'), // Trash Icon
+        inputUpperArea: document.querySelector('.input-upper-area'),
         modelTrigger: document.querySelector('#model-trigger'),
         modelMenu: document.querySelector('#model-menu'),
         modelNameDisplay: document.querySelector('.current-model-name'),
@@ -212,27 +223,35 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // 10. Upload Options Logic
+        // 10. Upload Options Logic (Hover Menu)
         if (elements.uploadOptions) {
             elements.uploadOptions.forEach(btn => {
                 btn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent bubbling to parent zone if it has a listener
                     const type = btn.getAttribute('data-type');
-                    const fileInput = elements.hiddenFileInput;
-                    
-                    if (fileInput) {
-                        // Reset value to allow selecting same file again
-                        fileInput.value = '';
-                        
-                        if (type === 'image') {
-                            fileInput.setAttribute('accept', 'image/*');
-                            fileInput.setAttribute('multiple', 'multiple'); // Support multiple images
-                        } else {
-                            fileInput.setAttribute('accept', 'video/*');
-                            fileInput.removeAttribute('multiple'); // Single video
-                        }
-                        
-                        fileInput.click();
-                    }
+                    triggerFileUpload(type);
+                });
+            });
+        }
+        
+        // 10.1 Visual Upload Zone Click Logic (Direct Click)
+        // In "single-mode" (Text/ImageGen), clicking the zone should trigger image upload directly
+        if (elements.visualUploadZone) {
+            elements.visualUploadZone.addEventListener('click', (e) => {
+                // If in single mode (Text or ImageGen), trigger image upload
+                // Or if user clicked the "default-state" content specifically
+                if (state.currentEngine === 'text' || (state.currentEngine === 'visual' && state.currentVisualTab === 'image-gen')) {
+                     triggerFileUpload('image');
+                }
+            });
+        }
+
+        // 10.2 Video Frame Upload Zones (Start/End)
+        if (elements.videoFrameZones) {
+            elements.videoFrameZones.forEach(zone => {
+                zone.addEventListener('click', () => {
+                     // Trigger file upload for image (frames are images)
+                     triggerFileUpload('image');
                 });
             });
         }
@@ -240,43 +259,223 @@ document.addEventListener('DOMContentLoaded', () => {
         // 11. File Input Change Listener
         if (elements.hiddenFileInput) {
             elements.hiddenFileInput.addEventListener('change', (e) => {
-                const files = e.target.files;
+                const files = Array.from(e.target.files);
                 if (files.length > 0) {
-                    // Update state
+                    // Check limit
+                    const currentCount = state.uploadedFiles.length;
+                    const remaining = 9 - currentCount;
+                    
+                    if (remaining <= 0) {
+                        alert("最多只能上传9张图片");
+                        return;
+                    }
+
+                    const filesToAdd = files.slice(0, remaining);
+                    if (files.length > remaining) {
+                        alert(`最多只能上传9张图片，已自动选取前 ${remaining} 张`);
+                    }
+
+                    filesToAdd.forEach(file => {
+                        state.uploadedFiles.push(file);
+                        state.uploadedFileUrls.push(URL.createObjectURL(file));
+                    });
+
                     state.hasVisualInput = true;
                     
-                    // Show simple feedback (simulated)
-                    // In a real app, we would display thumbnails here
-                    const uploadHint = document.querySelector('.upload-hint');
-                    if (uploadHint) {
-                        uploadHint.textContent = `已选择 ${files.length} 个文件`;
-                    }
+                    // Render Previews
+                    renderPreviews();
                     
                     updateSendButtonState();
                 }
             });
         }
 
-        // 12. New Chat Button
-        const newChatBtn = document.querySelector('#new-chat-btn');
-        if (newChatBtn) {
-            newChatBtn.addEventListener('click', () => {
-                if (confirm('确定要清除当前对话上下文吗？')) {
-                    // Clear bubbles (keep welcome section if present, or just remove bubbles)
-                    const bubbles = document.querySelectorAll('.result-bubble');
-                    bubbles.forEach(b => b.remove());
-                    // Optionally show welcome again if empty
-                    elements.welcomeTitle.style.display = 'block';
-                    // Clear input
-                    if (elements.inputBox) elements.inputBox.innerText = '';
-                }
+        // 12. New Chat Button (Trash Icon)
+        if (elements.newChatBtn) {
+            elements.newChatBtn.addEventListener('click', () => {
+                 resetChat();
             });
         }
+    }
+
+    // --- Helper Functions ---
+
+    function triggerFileUpload(type) {
+        const fileInput = elements.hiddenFileInput;
+        if (fileInput) {
+            // Reset value to allow selecting same file again
+            fileInput.value = '';
+            
+            if (type === 'image') {
+                fileInput.setAttribute('accept', 'image/*');
+                fileInput.setAttribute('multiple', 'multiple'); // Support multiple images
+            } else {
+                fileInput.setAttribute('accept', 'video/*');
+                fileInput.removeAttribute('multiple'); // Single video
+            }
+            
+            fileInput.click();
+        }
+    }
+
+    function renderPreviews() {
+        // Clear existing previews
+        const existingPreviews = document.querySelectorAll('.input-upload-preview');
+        existingPreviews.forEach(el => el.remove());
+
+        // Check if we have files
+        if (state.uploadedFileUrls.length === 0) {
+            // Re-enable upload zone just in case
+            if (elements.visualUploadZone) elements.visualUploadZone.classList.remove('disabled');
+            return;
+        }
+
+        // Render each file
+        state.uploadedFileUrls.forEach((url, index) => {
+            const preview = document.createElement('div');
+            preview.className = 'input-upload-preview';
+            preview.innerHTML = `
+                <img src="${url}" class="preview-thumbnail-img">
+                <div class="remove-upload-btn" data-index="${index}">×</div>
+            `;
+
+            // Add to input upper area (AFTER visual upload zone)
+            if (elements.visualUploadZone && elements.visualUploadZone.parentNode) {
+                 elements.visualUploadZone.parentNode.insertBefore(preview, elements.visualUploadZone.nextSibling); // Insert after zone (or before previous sibling if we iterate backwards, but here we iterate forwards so we should append them in order)
+                 // Wait, insertBefore nextSibling will reverse order if we loop 0..N and always insert after zone.
+                 // Actually, if we want them [Zone] [1] [2] [3]...
+                 // We should insert the last one first? Or just append them to a container?
+                 // The parent is `input-upper-area`. It has `visualUploadZone` and `inputBox`.
+                 // We want to insert them between Zone and Box.
+                 // Correct logic: Insert before inputBox. 
+                 // But wait, the user said "div 右侧". 
+                 // So the order is: [Zone] [Preview1] [Preview2] ... [InputBox]
+                 
+                 // To keep order correct:
+                 // We cleared all previews.
+                 // We can insert them before `inputBox`.
+                 // But `inputBox` might be far away if there are other elements.
+                 // Let's insert before `inputBox` but ensure they are after `visualUploadZone`.
+                 
+                 // A better way: insertBefore `elements.visualUploadZone.nextSibling` logic is tricky for multiple.
+                 // Let's use `insertBefore` `elements.inputBox`? 
+                 // `input-upper-area` contains: [visualUploadZone] ... [inputContent (inputBox)]
+                 
+                 // If we loop 0->N:
+                 // 0: Insert before inputBox. [Zone] [0] [Box]
+                 // 1: Insert before inputBox. [Zone] [0] [1] [Box] -> CORRECT!
+                 // `parentNode.insertBefore(newNode, referenceNode)`
+                 
+                 if (elements.inputUpperArea && elements.inputBox) {
+                     elements.inputUpperArea.insertBefore(preview, elements.inputBox);
+                 }
+            }
+
+            // Bind remove event
+            preview.querySelector('.remove-upload-btn').addEventListener('click', (e) => {
+                const idx = parseInt(e.target.getAttribute('data-index'));
+                removeFile(idx);
+            });
+        });
+
+        // Check limit to disable upload zone
+        if (state.uploadedFiles.length >= 9) {
+            if (elements.visualUploadZone) elements.visualUploadZone.classList.add('disabled');
+        } else {
+            if (elements.visualUploadZone) elements.visualUploadZone.classList.remove('disabled');
+        }
+    }
+
+    function removeFile(index) {
+        if (index >= 0 && index < state.uploadedFiles.length) {
+            // Remove file and URL
+            const url = state.uploadedFileUrls[index];
+            URL.revokeObjectURL(url);
+            
+            state.uploadedFiles.splice(index, 1);
+            state.uploadedFileUrls.splice(index, 1);
+            
+            if (state.uploadedFiles.length === 0) {
+                state.hasVisualInput = false;
+            }
+            
+            // Re-render
+            renderPreviews();
+            updateSendButtonState();
+        }
+    }
+
+    function clearAllUploads() {
+        state.uploadedFiles = [];
+        state.hasVisualInput = false;
+        
+        // Revoke all URLs
+        state.uploadedFileUrls.forEach(url => URL.revokeObjectURL(url));
+        state.uploadedFileUrls = [];
+        
+        // Clear DOM
+        const previews = document.querySelectorAll('.input-upload-preview');
+        previews.forEach(el => el.remove());
+        
+        if (elements.hiddenFileInput) elements.hiddenFileInput.value = '';
+        if (elements.visualUploadZone) elements.visualUploadZone.classList.remove('disabled');
+        
+        updateSendButtonState();
+    }
+
+    function updateSendButtonState() {
+        if (!elements.sendBtn || !elements.inputBox) return;
+        
+        const text = elements.inputBox.innerText.trim();
+        // Enable if has text OR has file
+        if (text.length > 0 || state.uploadedFiles.length > 0) {
+            elements.sendBtn.classList.remove('disabled');
+            elements.sendBtn.style.opacity = '1';
+            elements.sendBtn.style.cursor = 'pointer';
+        } else {
+            elements.sendBtn.classList.add('disabled');
+            elements.sendBtn.style.opacity = '0.5';
+            elements.sendBtn.style.cursor = 'not-allowed';
+        }
+    }
+
+    function resetChat() {
+        // Cleanup Chat Image URLs to prevent memory leaks
+        if (state.chatImageUrls && state.chatImageUrls.length > 0) {
+            state.chatImageUrls.forEach(url => URL.revokeObjectURL(url));
+            state.chatImageUrls = [];
+        }
+
+        // Clear Chat Container
+        if (elements.chatContainer) {
+            elements.chatContainer.innerHTML = '';
+            elements.chatContainer.style.display = 'none';
+        }
+
+        // Clear Visual Result Bubbles
+        const results = document.querySelectorAll('.result-bubble');
+        results.forEach(el => el.remove());
+        
+        // Show Welcome
+        if (elements.welcomeSection) {
+            elements.welcomeSection.style.display = 'flex'; // or block/flex depending on css
+        }
+
+        // Hide Trash Icon
+        if (elements.newChatBtn) {
+            elements.newChatBtn.style.display = 'none';
+        }
+
+        // Clear Inputs
+        if (elements.inputBox) elements.inputBox.innerText = '';
+        clearAllUploads();
     }
 
     // --- Logic Actions ---
 
     function switchEngine(engine) {
+        // Reset chat/result state when switching engines
+        resetChat(); 
         state.currentEngine = engine;
         render();
     }
@@ -327,43 +526,152 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function simulateGeneration() {
-        // Helper to animate generation in a specific container
-        const animate = (container) => {
-            const originalContent = container.innerHTML;
-            container.innerHTML = `<div class="loading-state" style="text-align:center; padding-top: 100px;">
-                <div class="spinner" style="border: 2px solid #f3f3f3; border-top: 2px solid #165DFF; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
-                <p style="font-size:12px; color:#999;">正在生成...</p>
-            </div>`;
-            
-            setTimeout(() => {
-                container.innerHTML = originalContent;
-                // Mock append result
-                const result = document.createElement('div');
-                result.className = 'result-bubble';
-                result.style.cssText = 'background:#F7F8FA; padding:12px; border-radius:8px; margin-top:16px; width:100%; text-align:left; font-size:14px;';
+        const userInput = elements.inputBox.innerText.trim();
+        const uploadedFiles = [...state.uploadedFiles]; // Copy
+        const uploadedFileUrls = [...state.uploadedFileUrls]; // Copy
+
+        // Simulate Upload Log
+        uploadedFiles.forEach(file => {
+             console.log(`[Simulation] Uploading file to: /Users/lealee/Library/Mobile Documents/com~apple~CloudDocs/Trae_Playground/「Personal」小团队日常/UXteam管理/需求剔骨器_UX/Source/AI平台_体验中心/Output/images/${file.name}`);
+        });
+
+        // Show Trash Icon (Clear Chat) when conversation starts
+        if (elements.newChatBtn) {
+            elements.newChatBtn.style.display = 'flex';
+        }
+
+        // Handle Text Engine (Chat Flow)
+        if (state.currentEngine === 'text') {
+            // Switch to Chat View
+            if (elements.welcomeSection) elements.welcomeSection.style.display = 'none';
+            if (elements.chatContainer) {
+                elements.chatContainer.style.display = 'flex';
                 
-                let content = `【生成结果】这里是 ${state.modelSelection.brand} 模型根据您的输入生成的内容...`;
-                if (state.currentEngine === 'visual') {
-                    if (state.currentVisualTab === 'image-gen') {
-                        content = `【生成结果】已生成 ${state.visualSettings.count} 张 ${state.visualSettings.ratio} 图片`;
-                    } else if (state.currentVisualTab === 'video-gen') {
-                        content = `【生成结果】已生成 ${state.visualSettings.duration} / ${state.visualSettings.resolution} 视频 ${state.visualSettings.smartRewrite ? '(已启用Prompt改写)' : ''}`;
-                    }
+                // 1. Add User Message
+                const userMsg = document.createElement('div');
+                userMsg.className = 'message user-message';
+                
+                let contentHtml = '';
+                
+                // Add images if any
+                if (uploadedFileUrls.length > 0) {
+                    contentHtml += `<div class="message-images" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;">`;
+                    uploadedFileUrls.forEach(url => {
+                        contentHtml += `<img src="${url}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; display: block; border: 1px solid rgba(0,0,0,0.1);">`;
+                        // Track URL to revoke later (memory management)
+                        if (!state.chatImageUrls) state.chatImageUrls = [];
+                        state.chatImageUrls.push(url);
+                    });
+                    contentHtml += `</div>`;
                 }
                 
-                result.textContent = content;
+                contentHtml += `<div class="message-content">${userInput}</div>`;
                 
-                // Insert after input box
-                const inputBox = container.querySelector('.input-box-container');
-                if (inputBox) inputBox.parentNode.insertBefore(result, inputBox.nextSibling);
-            }, 1500);
-        };
+                userMsg.innerHTML = contentHtml;
+                elements.chatContainer.appendChild(userMsg);
+                
+                // Clear Upload State (without revoking URLs as they are now in chat)
+                state.uploadedFiles = [];
+                state.uploadedFileUrls = [];
+                state.hasVisualInput = false;
+                
+                // Clear DOM Previews
+                const previews = document.querySelectorAll('.input-upload-preview');
+                previews.forEach(el => el.remove());
+                if (elements.hiddenFileInput) elements.hiddenFileInput.value = '';
+                if (elements.visualUploadZone) elements.visualUploadZone.classList.remove('disabled');
+                
+                updateSendButtonState();
+                elements.inputBox.innerText = ''; // Clear input text
 
-        animate(elements.workspaceLeft);
-        
-        if (state.isCompareMode) {
-            const rightPane = document.querySelector('#workspace-right');
-            if (rightPane) animate(rightPane);
+                // 2. Add Loading Message
+                const loadingMsg = document.createElement('div');
+                loadingMsg.className = 'message ai-message loading';
+                loadingMsg.innerHTML = `
+                    <div class="message-avatar">
+                        <img src="assets/avatar-ai.png" onerror="this.src='assets/icon-ai.svg'" style="width:24px; height:24px;">
+                    </div>
+                    <div class="message-content">
+                        <div class="spinner" style="width: 16px; height: 16px; border: 2px solid #e5e6eb; border-top-color: #165DFF; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+                    </div>
+                `;
+                elements.chatContainer.appendChild(loadingMsg);
+                
+                // Scroll to bottom
+                elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+
+                // 3. Simulate Response
+                setTimeout(() => {
+                    loadingMsg.remove();
+                    
+                    const aiMsg = document.createElement('div');
+                    aiMsg.className = 'message ai-message';
+                    aiMsg.innerHTML = `
+                        <div class="message-avatar">
+                            <img src="assets/avatar-ai.png" onerror="this.src='assets/icon-ai.svg'" style="width:24px; height:24px;">
+                        </div>
+                        <div class="message-content">
+                            这里是 ${state.modelSelection.brand} 模型根据您的输入生成的内容。
+                            <br>
+                            这是一个模拟的回复，用于演示对话流交互体验。
+                        </div>
+                    `;
+                    elements.chatContainer.appendChild(aiMsg);
+                    elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+                }, 1500);
+            }
+            
+            // Clear Inputs (pass false to avoid revoking, though we nulled it already)
+            if (elements.inputBox) elements.inputBox.innerText = '';
+            clearUpload(false); 
+
+        } else {
+            // Handle Visual/Other Engines (Original "Result Bubble" Logic)
+            const animate = (container) => {
+                const originalContent = container.innerHTML;
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'loading-state';
+                loadingDiv.style.textAlign = 'center';
+                loadingDiv.style.paddingTop = '20px';
+                loadingDiv.innerHTML = `
+                    <div class="spinner" style="border: 2px solid #f3f3f3; border-top: 2px solid #165DFF; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+                    <p style="font-size:12px; color:#999;">正在生成...</p>
+                `;
+                
+                const inputBox = container.querySelector('.input-box-container');
+                if (inputBox) {
+                    inputBox.parentNode.insertBefore(loadingDiv, inputBox);
+                }
+
+                setTimeout(() => {
+                    loadingDiv.remove();
+                    const result = document.createElement('div');
+                    result.className = 'result-bubble';
+                    result.style.cssText = 'background:#F7F8FA; padding:12px; border-radius:8px; margin-bottom:16px; width:100%; text-align:left; font-size:14px;';
+                    
+                    let content = `【生成结果】这里是 ${state.modelSelection.brand} 模型根据您的输入生成的内容...`;
+                    if (state.currentEngine === 'visual') {
+                        if (state.currentVisualTab === 'image-gen') {
+                            content = `【生成结果】已生成 ${state.visualSettings.count} 张 ${state.visualSettings.ratio} 图片`;
+                        } else if (state.currentVisualTab === 'video-gen') {
+                            content = `【生成结果】已生成 ${state.visualSettings.duration} / ${state.visualSettings.resolution} 视频 ${state.visualSettings.smartRewrite ? '(已启用Prompt改写)' : ''}`;
+                        }
+                    }
+                    result.textContent = content;
+                    
+                    if (inputBox) inputBox.parentNode.insertBefore(result, inputBox.nextSibling);
+                }, 1500);
+            };
+
+            animate(elements.workspaceLeft);
+            if (state.isCompareMode) {
+                const rightPane = document.querySelector('#workspace-right');
+                if (rightPane) animate(rightPane);
+            }
+            
+            // Clear inputs for visual mode too
+             if (elements.inputBox) elements.inputBox.innerText = '';
+             clearUpload(true);
         }
     }
 
@@ -400,68 +708,69 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Toggle Visual Upload Zone
-        const visualUploadZone = document.querySelector('#visual-upload-zone');
-        // Show upload zone in Visual Understanding, Image Gen, and Text mode
-        if ((state.currentEngine === 'visual' && (state.currentVisualTab === 'understanding' || state.currentVisualTab === 'image-gen')) || state.currentEngine === 'text') {
-            if (visualUploadZone) visualUploadZone.style.display = 'block';
-            
-            // Update placeholder only if in Visual mode to be specific, otherwise keep text default
-            if (state.currentEngine === 'visual' && elements.inputBox) {
-                 let phText = "输入对图片/视频的描述或提问...";
-                 if (state.currentVisualTab === 'image-gen') phText = "输入提示词生成图片 (支持垫图)...";
-                 
-                 elements.inputBox.innerHTML = `<span class="placeholder-text" contenteditable="false">${phText}</span>`;
-            }
-            
-            // Handle Video Upload Button Visibility & Single Mode Class
-            const videoUploadBtn = document.querySelector('.upload-option-btn[data-type="video"]');
-            if (videoUploadBtn) {
-                // Single Mode (Text or Image Gen)
-                if (state.currentEngine === 'text' || (state.currentEngine === 'visual' && state.currentVisualTab === 'image-gen')) {
-                    videoUploadBtn.style.display = 'none'; // Hide video in text/image-gen mode
-                    visualUploadZone.classList.add('single-mode'); // Add single mode class
-                    
-                    // Add specific class for Image Gen to customize text
-                    if (state.currentEngine === 'visual' && state.currentVisualTab === 'image-gen') {
-                        visualUploadZone.classList.add('image-gen-mode');
-                    } else {
-                        visualUploadZone.classList.remove('image-gen-mode');
-                    }
-                } else {
-                    videoUploadBtn.style.display = 'flex'; // Show in visual mode
-                    visualUploadZone.classList.remove('single-mode'); // Remove single mode class
-                    visualUploadZone.classList.remove('image-gen-mode');
-                }
-            }
-
-        } else {
-            if (visualUploadZone) visualUploadZone.style.display = 'none';
-            // Reset placeholder for other modes (Image/Video Gen)
-            if (elements.inputBox && state.currentEngine === 'visual') { // Only reset if not text mode (handled above)
-                 // actually the logic below handles text mode placeholder separately
-            }
-        }
-
-        // Update Footer Tools Visibility
-        // Reset all first
+        // Toggle Visual Upload Zone & Tools
+        // 1. Reset Common Elements
+        if (elements.visualUploadZone) elements.visualUploadZone.style.display = 'none';
+        if (elements.videoUploadGroup) elements.videoUploadGroup.style.display = 'none';
+        
         if (elements.toolsText) elements.toolsText.style.display = 'none';
         if (elements.toolsVisualUnderstanding) elements.toolsVisualUnderstanding.style.display = 'none';
         if (elements.toolsImage) elements.toolsImage.style.display = 'none';
         if (elements.toolsVideo) elements.toolsVideo.style.display = 'none';
 
+        const videoUploadBtn = document.querySelector('.upload-option-btn[data-type="video"]');
+
+        // 2. Logic Branching
         if (state.currentEngine === 'text') {
+            // --- Text Mode ---
             if (elements.toolsText) elements.toolsText.style.display = 'flex';
+            
+            if (elements.visualUploadZone) {
+                elements.visualUploadZone.style.display = 'block';
+                elements.visualUploadZone.classList.add('single-mode');
+                elements.visualUploadZone.classList.remove('image-gen-mode');
+            }
+            if (videoUploadBtn) videoUploadBtn.style.display = 'none';
+
         } else {
-            // Visual Engine
-            if (state.currentVisualTab === 'understanding') {
-                if (elements.toolsVisualUnderstanding) elements.toolsVisualUnderstanding.style.display = 'flex';
-            } else if (state.currentVisualTab === 'image-gen') {
-                if (elements.toolsImage) {
-                    elements.toolsImage.style.display = 'flex';
-                }
-            } else if (state.currentVisualTab === 'video-gen') {
+            // --- Visual Mode ---
+            const subVal = state.currentVisualTab;
+
+            if (subVal === 'video-gen') {
+                // Video Gen
+                if (elements.videoUploadGroup) elements.videoUploadGroup.style.display = 'flex';
                 if (elements.toolsVideo) elements.toolsVideo.style.display = 'flex';
+                
+                // Placeholder
+                if (elements.inputBox) {
+                    elements.inputBox.innerHTML = '<span class="placeholder-text" contenteditable="false">输入提示词生成视频...</span>';
+                }
+
+            } else {
+                // Understanding or Image Gen
+                if (elements.visualUploadZone) {
+                    elements.visualUploadZone.style.display = 'block';
+                    
+                    if (subVal === 'image-gen') {
+                        // Image Gen
+                        elements.visualUploadZone.classList.add('single-mode', 'image-gen-mode');
+                        if (videoUploadBtn) videoUploadBtn.style.display = 'none';
+                        if (elements.toolsImage) elements.toolsImage.style.display = 'flex';
+                        
+                        if (elements.inputBox) {
+                             elements.inputBox.innerHTML = '<span class="placeholder-text" contenteditable="false">输入提示词生成图片 (支持垫图)...</span>';
+                        }
+                    } else {
+                        // Understanding
+                        elements.visualUploadZone.classList.remove('single-mode', 'image-gen-mode');
+                        if (videoUploadBtn) videoUploadBtn.style.display = 'flex';
+                        if (elements.toolsVisualUnderstanding) elements.toolsVisualUnderstanding.style.display = 'flex';
+                        
+                        if (elements.inputBox) {
+                             elements.inputBox.innerHTML = '<span class="placeholder-text" contenteditable="false">输入对图片/视频的描述或提问...</span>';
+                        }
+                    }
+                }
             }
         }
         
