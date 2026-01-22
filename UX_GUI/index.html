@@ -112,42 +112,68 @@
                     </div>
 
                     <div class="header-actions">
-                     <button id="new-chat-btn" class="icon-btn" title="清空对话" style="display:none;">
-                        <img src="assets/trash-icon.svg" style="width:16px; height:16px;">
-                     </button>
                      <button id="compare-toggle" class="icon-btn" title="模型对比">
                         <span class="vs-btn">VS 对比</span>
-                     </button>
-                     <button class="header-action-btn" title="参数配置">
-                        <img src="assets/setting-icon.svg" alt="Config">
                      </button>
                 </div>
                 </header>
 
                 <!-- Workspace -->
-                <div class="workspace" id="workspace">
-                    <!-- Left Pane (Default) -->
-                    <div class="workspace-center" id="workspace-left">
+                <div class="workspace" id="workspace" style="flex-direction: column; padding-top: 0;">
+                    <!-- Split Area -->
+                    <div class="workspace-split-area" style="display: flex; flex: 1; width: 100%; overflow: hidden;">
+                        
+                        <!-- Left Pane -->
+                        <div class="workspace-center pane" id="workspace-left" style="flex: 1; padding: 20px; overflow-y: auto;">
+                             <button class="pane-config-btn" title="参数配置" data-side="left">
+               <img src="assets/config-icon.svg" alt="Config">
+            </button>
 
-                        <div class="welcome-section" id="welcome-section">
-                            <h2 class="welcome-title">欢迎使用文本大模型</h2>
 
+                             <div class="welcome-section" id="welcome-section-left">
+                                 <h2 class="welcome-title">欢迎使用文本大模型</h2>
+                             </div>
+                             
+                             <div id="chat-container-left" class="chat-container" style="display:none; width: 100%;"></div>
+                             <div id="visual-tools-container"></div>
                         </div>
 
-                        <!-- Chat Container (Hidden by default) -->
-                        <div id="chat-container" class="chat-container" style="display:none;"></div>
+                        <!-- Right Pane (Hidden by default) -->
+                        <div class="workspace-center pane" id="workspace-right" style="display: none; flex: 1; padding: 20px; overflow-y: auto; border-left: 1px solid #E5E6EB;">
+                             <button class="pane-config-btn" title="参数配置" data-side="right">
+               <img src="assets/config-icon.svg" alt="Config">
+            </button>
 
-                        <!-- Visual Tools Container (Dynamic) -->
-                        <div id="visual-tools-container"></div>
 
-                        <!-- Input Box -->
-                        <div class="input-box-container">
+                             <div class="welcome-section" id="welcome-section-right">
+                                 <h2 class="welcome-title">欢迎使用文本大模型</h2>
+                             </div>
+                             
+                             <div id="chat-container-right" class="chat-container" style="display:none; width: 100%;"></div>
+                        </div>
+
+                    </div>
+
+                    <!-- Shared Input Area (Fixed Bottom) -->
+                    <div class="shared-input-container" style="width: 100%; max-width: 800px; margin: 0 auto; padding: 20px;">
+                         <!-- Input Box Container -->
+                         <div class="input-box-container">
+                            <!-- Preset Tags (NEW) - MOVED ABOVE -->
+                            <div id="image-gen-tags" class="preset-tags" style="display: none; padding-bottom: 8px;">
+                                <span class="preset-tag">Portrait</span>
+                                <span class="preset-tag">Landscape</span>
+                                <span class="preset-tag">Cyberpunk</span>
+                                <span class="preset-tag">Anime</span>
+                            </div>
+
                              <div class="input-upper-area">
+
+
                                  <!-- Visual Upload Zone (For Understanding Mode) - MOVED HERE -->
                                  <div id="visual-upload-zone" class="upload-zone" style="display:none;">
                                      <!-- Default State (Square) -->
                                      <div class="upload-content default-state">
-                                         <img src="assets/upload-icon.svg" style="width:24px; opacity:0.5;">
+                                         <img src="assets/upload-placeholder-icon.svg" style="width:24px; opacity:0.5;">
                                          <span class="upload-hint">上传</span>
                                      </div>
                                      <!-- Hover/Active State (Expanded) -->
@@ -181,8 +207,10 @@
                                      </div>
                                  </div>
     
-                                <div class="input-content" contenteditable="true">
-                                    <span class="placeholder-text" contenteditable="false">在这里输入内容，探索无限可能。</span>
+                                <div class="input-text-wrapper">
+                                    <div class="input-content" contenteditable="true">
+                                        <span class="placeholder-text" contenteditable="false">在这里输入内容，探索无限可能。</span>
+                                    </div>
                                 </div>
                              </div>
                             
@@ -193,12 +221,12 @@
                                     <!-- Advanced Switches (Text Model Only) -->
                                     <div class="tools-group" id="tools-text">
                                         <label class="switch-control">
-                                            <input type="checkbox" class="switch-input">
+                                            <input type="checkbox" class="switch-input" id="deep-think-switch">
                                             <span class="switch-slider"></span>
                                             <span class="switch-label-text">深度思考</span>
                                         </label>
                                         <label class="switch-control">
-                                            <input type="checkbox" class="switch-input">
+                                            <input type="checkbox" class="switch-input" id="web-search-switch">
                                             <span class="switch-slider"></span>
                                             <span class="switch-label-text">联网</span>
                                         </label>
@@ -235,11 +263,7 @@
                                                 <option value="4">4张</option>
                                             </select>
                                         </div>
-                                        <div class="tool-divider"></div>
-                                        <button class="tool-btn" id="upload-ref-img">
-                                            <span style="font-size: 16px; line-height: 1;">+</span>
-                                            <span>参考图</span>
-                                        </button>
+
                                     </div>
 
                                     <!-- Video Generation Tools -->
@@ -297,22 +321,11 @@
                     <span class="close-drawer">×</span>
                 </div>
                 <div class="drawer-content">
-                    <div class="config-item">
-                        <label>
-                            System Prompt
-                            <img src="assets/magic-icon.svg" title="Prompt 优化" style="width:14px; cursor:pointer; float:right;">
-                        </label>
-                        <textarea placeholder="输入系统预设指令..."></textarea>
-                    </div>
-                    <div class="config-item">
-                        <label>Temperature (随机性)</label>
-                        <input type="range" min="0" max="1" step="0.1" value="0.7">
-                        <div class="range-val">0.7</div>
-                    </div>
-                    <div class="config-item">
-                        <label>Max Tokens</label>
-                        <input type="number" value="2048">
-                    </div>
+                   <div class="drawer-placeholder">
+                       <img src="assets/setting-icon.svg" class="drawer-placeholder-icon">
+                       <p>对齐 Modelverse 功能与交互逻辑</p>
+                       <p class="drawer-placeholder-sub">仅组件样式替换</p>
+                   </div>
                 </div>
             </aside>
 
